@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
 const bodyParser = require("body-parser");
 const { default: mongoose } = require("mongoose");
 const app = express();
@@ -31,12 +31,17 @@ app
   })
   .post(function (req, res) {
     const email = req.body.username;
-    const pass = md5(req.body.password);
+    const pass = req.body.password;
+
     User.findOne({ email: email }, function (err, user) {
       if (err) console.log(err);
       else if (user) {
-        if (user.password === pass) res.render("secrets");
-        else res.render("login");
+        bcrypt.compare(pass, user.password, function (err, result) {
+          if (err) console.log(err);
+          else if (result) {
+            res.render("secrets");
+          } else res.render("login");
+        });
       } else res.render("register");
     });
   });
@@ -46,18 +51,23 @@ app
     res.render("register");
   })
   .post(function (req, res) {
-    const newuser = {
-      email: req.body.username,
-      password: md5(req.body.password),
-    };
-    User.findOne({ email: newuser.email }, function (err, user) {
+    bcrypt.hash(req.body.password, 10, function (err, hash) {
       if (err) console.log(err);
-      else if (user) res.render("login");
       else {
-        const newUser = new User(newuser);
-        newUser.save(function (err) {
+        const newuser = {
+          email: req.body.username,
+          password: hash,
+        };
+        User.findOne({ email: newuser.email }, function (err, user) {
           if (err) console.log(err);
-          else res.render("secrets");
+          else if (user) res.render("login");
+          else {
+            const newUser = new User(newuser);
+            newUser.save(function (err) {
+              if (err) console.log(err);
+              else res.render("secrets");
+            });
+          }
         });
       }
     });
