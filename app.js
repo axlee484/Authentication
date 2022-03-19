@@ -48,7 +48,7 @@ app
   .post(function (req, res) {
     const newuser = {
       email: req.body.username,
-      password: req.body.password,
+      password: md5(req.body.password),
     };
     User.findOne({ email: newuser.email }, function (err, user) {
       if (err) console.log(err);
